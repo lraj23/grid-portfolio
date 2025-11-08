@@ -1,0 +1,15 @@
+{
+	"name": "grid-portfolio",
+	"version": "0.1.0",
+	"description": "View lraj23's project and progress in a grid!",
+	"main": "app.js",
+	"type": "module",
+	"scripts": {
+		"start": "node --env-file=.env app.js",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"@slack/bolt": "^4.2.0"
+	}
+}
