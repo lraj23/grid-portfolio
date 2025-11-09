@@ -3,7 +3,6 @@ import { getGPortfolio, saveState } from "./datahandler.js";
 import { projects } from "./projects.js";
 const lraj23UserId = "U0947SL6AKB";
 const lraj23BotTestingId = "C09GR27104V";
-console.log(projects);
 
 app.message("", async () => { });
 
@@ -19,7 +18,7 @@ app.command("/gportfolio-grid", async ({ ack, body: { user_id, channel_id }, res
 		},
 		{
 			type: "table",
-			rows: [[projects[0], projects[1], projects[2]], [projects[3], projects[4], projects[5]], [projects[6], [, ["", , "transparent"]], [, ["", , "transparent"]]]].map(row => row.map(project => ({
+			rows: [[projects[0], projects[1], projects[2]], [projects[3], projects[4], projects[5]], [projects[6], (projects[7] || [, ["", , "transparent"]]), (projects[8] || [, ["", , "transparent"]])]].map(row => row.map(project => ({
 				type: "rich_text",
 				elements: [
 					{
@@ -77,7 +76,79 @@ app.command("/gportfolio-grid", async ({ ack, body: { user_id, channel_id }, res
 })
 ]);
 
-app.action(/^learn-about-.+$/, async ({ ack }) => await ack());
+app.action(/^learn-about-.+$/, async ({ ack, action: { value }, body: { user: { id: user }, channel: { id: channel } }, respond }) => {
+	await ack();
+	console.log(value, user);
+	const project = Object.fromEntries(projects)[value];
+	await app.client.chat.postEphemeral({
+		channel,
+		user,
+		text: "Information about <@" + project[1] + ">:",
+		blocks: [
+			{
+				type: "section",
+				text: {
+					type: "mrkdwn",
+					text: ":" + project[2] + ": <@" + project[1] + ">:\n" + project[5]
+				}
+			},
+			{
+				type: "divider"
+			},
+			{
+				type: "section",
+				text: {
+					type: "mrkdwn",
+					text: "Commands:"
+				}
+			},
+			...(project[4].map(command => [
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: "*/" + project[3] + command[0] + "*: " + command[1][0] + "\n" + command[1][1]
+					}
+				},
+				{
+					type: "actions",
+					elements: [
+						{
+							type: "button",
+							text: {
+								type: "plain_text",
+								text: "Run Command",
+								emoji: true
+							},
+							value: "run-command",
+							action_id: "run-command-" + project[3] + "-" + command[0]
+						}
+					]
+				}
+			]).flat()),
+			{
+				type: "divider"
+			},
+			{
+				type: "actions",
+				elements: [
+					{
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: ":x: Cancel",
+							emoji: true
+						},
+						value: "cancel",
+						action_id: "cancel"
+					}
+				]
+			}
+		]
+	});
+});
+
+app.action(/^run-command-.+$/, async ({ ack }) => await ack());
 
 app.action(/^ignore-.+$/, async ({ ack }) => await ack());
 
