@@ -4,4 +4,5 @@ package-lock.json
 .env
 *.log
 gportfolio.json
+projects.js
 brainstorm.md
