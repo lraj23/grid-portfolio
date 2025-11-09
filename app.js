@@ -3,10 +3,36 @@ import { getGPortfolio, saveState } from "./datahandler.js";
 import { projects } from "./projects.js";
 const lraj23UserId = "U0947SL6AKB";
 const lraj23BotTestingId = "C09GR27104V";
+const gPortfolioBotId = "U09RMTPUB4J";
+const gPortfolioDmId = "C09GR27104V";
+const commands = {};
 
-app.message("", async () => { });
+app.message("", async ({ message: { text, channel, channel_type } }) => {
+	console.log(channel);
+	if ((channel_type === "im") && (channel === gPortfolioDmId)) {
+		const info = text.split(";");
+		console.log(info[0], commands[info[0]]);
+		return commands[info[0]]({
+			ack: _ => _,
+			body: {
+				user_id: info[1],
+				channel_id: info[2]
+			},
+			respond: (response) => {
+				if (typeof response === "string") return app.client.chat.postEphemeral({
+					channel: info[2],
+					user: info[1],
+					text: response
+				});
+				if (!response.channel) response.channel = info[2];
+				if (!response.user) response.user = info[1];
+				app.client.chat.postEphemeral(response);
+			}
+		});
+	}
+});
 
-app.command("/gportfolio-grid", async ({ ack, body: { user_id, channel_id }, respond }) => [await ack(), await respond({
+commands.grid = async ({ ack, respond }) => [await ack(), await respond({
 	text: "Here is a grid view of <@" + lraj23UserId + ">'s bots:",
 	blocks: [
 		{
@@ -73,8 +99,8 @@ app.command("/gportfolio-grid", async ({ ack, body: { user_id, channel_id }, res
 			]
 		}
 	]
-})
-]);
+})];
+app.command("/gportfolio-grid", commands.grid);
 
 app.action(/^learn-about-.+$/, async ({ ack, action: { value }, body: { user: { id: user }, channel: { id: channel } }, respond }) => {
 	await ack();
@@ -120,8 +146,8 @@ app.action(/^learn-about-.+$/, async ({ ack, action: { value }, body: { user: { 
 								text: "Run Command",
 								emoji: true
 							},
-							value: "run-command",
-							action_id: "run-command-" + project[3] + "-" + command[0]
+							value: project[3] + "+" + command[0],
+							action_id: "run-command-" + project[3] + command[0]
 						}
 					]
 				}
@@ -148,7 +174,33 @@ app.action(/^learn-about-.+$/, async ({ ack, action: { value }, body: { user: { 
 	});
 });
 
-app.action(/^run-command-.+$/, async ({ ack }) => await ack());
+app.action(/^run-command-.+$/, async ({ ack, action: { value }, body: { user: { id: user }, channel: { id: channel } }, respond }) => {
+	await ack();
+	console.log(value, user, channel);
+	const project = projects.find(proj => proj[1][3] === value.split("+")[0])[1];
+	console.log(project, project[1], value.split("+")[1] + ";" + user + ";" + channel);
+	if (project[1] === gPortfolioBotId) return commands[value.split("+")[1]]({
+		ack: _ => _,
+		body: {
+			user_id: user,
+			channel_id: channel
+		},
+		respond: (response) => {
+			if (typeof response === "string") return app.client.chat.postEphemeral({
+				channel,
+				user,
+				text: response
+			});
+			if (!response.channel) response.channel = channel;
+			if (!response.user) response.user = user;
+			app.client.chat.postEphemeral(response);
+		}
+	});
+	else await app.client.chat.postMessage({
+		channel: project[1],
+		text: value.split("+")[1] + ";" + user + ";" + channel
+	});
+});
 
 app.action(/^ignore-.+$/, async ({ ack }) => await ack());
 
@@ -156,7 +208,8 @@ app.action("cancel", async ({ ack, respond }) => [await ack(), await respond({ d
 
 app.action("confirm", async ({ ack }) => await ack());
 
-app.command("/gportfolio-help", async ({ ack, respond, payload: { user_id } }) => [await ack(), await respond("This bot lets you view <@" + lraj23UserId + ">'s projects and progress in a grid! _More information to come soon..._\nFor more information, check out the readme at https://github.com/lraj23/grid-portfolio"), user_id === lraj23UserId ? await respond("Test but only for <@" + lraj23UserId + ">. If you aren't him and you see this message, DM him IMMEDIATELY about this!") : null]);
+app.command("/gportfolio-help", commands.help);
+commands.help = async ({ ack, respond, body: { user_id } }) => [await ack(), await respond("This bot lets you view <@" + lraj23UserId + ">'s projects and progress in a grid! _More information to come soon..._\nFor more information, check out the readme at https://github.com/lraj23/grid-portfolio"), user_id === lraj23UserId ? await respond("Test but only for <@" + lraj23UserId + ">. If you aren't him and you see this message, DM him IMMEDIATELY about this!") : null];
 
 app.message(/secret button/i, async ({ message: { channel, user, thread_ts, ts } }) => await app.client.chat.postEphemeral({
 	channel, user,
