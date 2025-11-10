@@ -199,8 +199,8 @@ app.action("cancel", async ({ ack, respond }) => [await ack(), await respond({ d
 
 app.action("confirm", async ({ ack }) => await ack());
 
+commands.help = async ({ ack, respond, body: { user_id } }) => [await ack(), await respond("This bot lets you view <@" + lraj23UserId + ">'s bots in a grid! Running /gportfolio-grid allows the user to view and interact with my bots!\nFor more information, check out the readme at https://github.com/lraj23/grid-portfolio OR run /gportfolio-grid and navigate to Grid Portfolio."), user_id === lraj23UserId ? await respond("Test but only for <@" + lraj23UserId + ">. If you aren't him and you see this message, DM him IMMEDIATELY about this!") : null];
 app.command("/gportfolio-help", commands.help);
-commands.help = async ({ ack, respond, body: { user_id } }) => [await ack(), await respond("This bot lets you view <@" + lraj23UserId + ">'s projects and progress in a grid! _More information to come soon..._\nFor more information, check out the readme at https://github.com/lraj23/grid-portfolio"), user_id === lraj23UserId ? await respond("Test but only for <@" + lraj23UserId + ">. If you aren't him and you see this message, DM him IMMEDIATELY about this!") : null];
 
 app.message(/secret button/i, async ({ message: { channel, user, thread_ts, ts } }) => await app.client.chat.postEphemeral({
 	channel, user,
