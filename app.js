@@ -52,8 +52,6 @@ const gridify = (array, filler, oneFiller, isFields) => {
 	return response;
 };
 
-app.message("", async () => { });
-
 commands.grid = async ({ ack, respond }) => [await ack(), await respond({
 	text: "Here is a grid view of <@" + lraj23UserId + ">'s bots:",
 	blocks: [
@@ -138,39 +136,103 @@ app.action(/^learn-about-.+$/, async ({ ack, action: { value }, body: { user: { 
 					text: "Commands:"
 				}
 			},
-			...(gridify(project[4], [, ["", , "transparent"]], false, true).map(row => ({
-				type: "section",
-				fields: row.map(command => ({
-					type: "mrkdwn",
-					text: command[0] ? "*/" + project[3] + command[0] + "*: " + command[1][0] + "\n" + command[1][1] : " "
-				}))
-			}))),
+			{
+				type: "table",
+				rows: gridify(project[4], [, ["", , "transparent"]], false).map(row => row.map(command => ({
+					type: "rich_text",
+					elements: [
+						{
+							type: "rich_text_section",
+							elements: [
+								{
+									type: "text",
+									text: command[0] ? "/" + project[3] + command[0] : " ",
+									style: {
+										bold: true
+									}
+								}
+							]
+						}
+					]
+				})))
+			},
 			{
 				type: "divider"
 			},
-			...(gridify(project[4], [, ["Cancel", , "x"]], true).map(row => ({
+			{
+				type: "section",
+				text: {
+					type: "mrkdwn",
+					text: "To learn more about, or run, any of these commands, select the button below!"
+				}
+			},
+			...(gridify(project[4], [], true).map(row => ({
 				type: "actions",
 				elements: row.map(command => ({
 					type: "button",
 					text: {
 						type: "plain_text",
-						text: command[0] ? "/" + project[3] + command[0] : ":x: Cancel",
+						text: command[0] ? "/" + project[3] + command[0] : ":x: Close",
 						emoji: true,
 					},
 					value: command[0] ? project[3] + "+" + command[0] : "cancel",
-					action_id: command[0] ? "run-command-" + project[3] + command[0] : "cancel"
+					action_id: command[0] ? "about-command-" + project[3] + command[0] : "cancel"
 				}))
-			})))
+			}))),
 		]
 	});
 });
 
-app.action(/^run-command-.+$/, async ({ ack, action: { value }, body: { user: { id: user }, channel: { id: channel } }, respond }) => {
+app.action(/^about-command-.+$/, async ({ ack, action: { value }, body: { user: { id: user }, channel: { id: channel }, trigger_id }, respond }) => {
 	await ack();
-	console.log(value, user, channel);
 	const project = projects.find(proj => proj[1][3] === value.split("+")[0])[1];
-	console.log(project, project[1], value.split("+")[1] + ";" + user + ";" + channel);
-	if (project[1] === gPortfolioBotId) return commands[value.split("+")[1]]({
+	const command = project[4].find(comm => comm[0] === value.split("+")[1]);
+	await app.client.views.open({
+		trigger_id,
+		view: {
+			type: "modal",
+			callback_id: "run-command-" + project[3] + "+" + command[0],
+			title: {
+				type: "plain_text",
+				text: command[0]
+			},
+			blocks: [
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: "*/" + project[3] + command[0] + ": " + command[1][0] + "*"
+					}
+				},
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: command[1][1]
+					}
+				},
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: "Opened in <#" + channel + "> by <@" + user + ">"
+					}
+				}
+			],
+			submit: {
+				type: "plain_text",
+				text: "Run Command",
+			}
+		}
+	})
+});
+
+app.view(/^run-command-.+$/, async ({ ack, view: { title: { text } }, body: { user: { id: user }, view: { blocks: { 0: { text: { text: commMeta } }, 2: { text: { text: meta } } } } }, respond }) => {
+	await ack();
+	const channel = meta.split("<#")[1].split(">")[0];
+	const projectId = projects.find(proj => proj[1][3] === commMeta.split("/")[1].split(text)[0])[1][1];
+	console.log(projectId, text + ";" + user + ";" + channel);
+	if (projectId === gPortfolioBotId) return commands[text]({
 		ack: _ => _,
 		body: {
 			user_id: user,
@@ -188,8 +250,8 @@ app.action(/^run-command-.+$/, async ({ ack, action: { value }, body: { user: { 
 		}
 	});
 	await app.client.chat.postMessage({
-		channel: project[1],
-		text: value.split("+")[1] + ";" + user + ";" + channel
+		channel: projectId,
+		text: text + ";" + user + ";" + channel
 	});
 });
 
