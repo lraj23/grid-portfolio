@@ -6,31 +6,53 @@ const lraj23BotTestingId = "C09GR27104V";
 const gPortfolioBotId = "U09RMTPUB4J";
 const gPortfolioDmId = "C09GR27104V";
 const commands = {};
-
-app.message("", async ({ message: { text, channel, channel_type } }) => {
-	console.log(channel);
-	if ((channel_type === "im") && (channel === gPortfolioDmId)) {
-		const info = text.split(";");
-		console.log(info[0], commands[info[0]]);
-		return commands[info[0]]({
-			ack: _ => _,
-			body: {
-				user_id: info[1],
-				channel_id: info[2]
-			},
-			respond: (response) => {
-				if (typeof response === "string") return app.client.chat.postEphemeral({
-					channel: info[2],
-					user: info[1],
-					text: response
-				});
-				if (!response.channel) response.channel = info[2];
-				if (!response.user) response.user = info[1];
-				app.client.chat.postEphemeral(response);
+const gridify = (array, filler, oneFiller, isFields) => {
+	let filledOneFiller = false;
+	let response = [];
+	const sec = (s, len) => {
+		let res = [];
+		for (let i = s; i < s + len; i++) {
+			if (array[i]) res.push(array[i]);
+			else if (filler && oneFiller) {
+				res.push(filler);
+				filledOneFiller = true;
+				break;
 			}
-		});
+			else if (filler) res.push(filler);
+			else break;
+		}
+		return res;
+	};
+
+	switch ([array.length <= 2, array.length <= 4, array.length <= 6, array.length && isFields, array.length <= 9, array.length <= 10 && isFields, array.length <= 12].indexOf(true)) {
+		case 0:
+			response = [sec(0, 2)];
+			break;
+		case 1:
+			response = [sec(0, 2), sec(2, 2)];
+			break;
+		case 2:
+			response = isFields ? [sec(0, 2), sec(2, 2), sec(4, 2)] : [sec(0, 3), sec(3, 3)];
+			break;
+		case 3:
+			response = [sec(0, 2), sec(2, 2), sec(4, 2), sec(6, 2)];
+			break;
+		case 4:
+			response = isFields ? [sec(0, 2), sec(2, 2), sec(4, 2), sec(6, 2), sec(8, 2)] : [sec(0, 3), sec(3, 3), sec(6, 3)];
+			break;
+		case 5:
+			response = [sec(0, 2), sec(2, 2), sec(4, 2), sec(6, 2), sec(8, 2)];
+			break;
+		case 6:
+			response = isFields ? [sec(0, 2), sec(2, 2), sec(4, 2), sec(6, 2), sec(8, 2), sec(10, 2)] : [sec(0, 3), sec(3, 3), sec(6, 3), sec(9, 3)];
+			break;
 	}
-});
+
+	if (oneFiller && (!filledOneFiller)) response.push([filler]);
+	return response;
+};
+
+app.message("", async () => { });
 
 commands.grid = async ({ ack, respond }) => [await ack(), await respond({
 	text: "Here is a grid view of <@" + lraj23UserId + ">'s bots:",
@@ -44,7 +66,7 @@ commands.grid = async ({ ack, respond }) => [await ack(), await respond({
 		},
 		{
 			type: "table",
-			rows: [[projects[0], projects[1], projects[2]], [projects[3], projects[4], projects[5]], [projects[6], (projects[7] || [, ["", , "transparent"]]), (projects[8] || [, ["", , "transparent"]])]].map(row => row.map(project => ({
+			rows: gridify(projects, [, ["", , "transparent"]], false).map(row => row.map(project => ({
 				type: "rich_text",
 				elements: [
 					{
@@ -73,31 +95,19 @@ commands.grid = async ({ ack, respond }) => [await ack(), await respond({
 				text: "To learn more about, or interact with, any of these bots, select the button below!"
 			}
 		},
-		{
+		...(gridify(projects, [, ["Cancel", , "x"]], true).map(row => ({
 			type: "actions",
-			elements: [
-				...(projects.map(project => ({
-					type: "button",
-					text: {
-						type: "plain_text",
-						text: ":" + project[1][2] + ": " + project[1][0],
-						emoji: true
-					},
-					value: project[0],
-					action_id: "learn-about-" + project[0]
-				}))),
-				{
-					type: "button",
-					text: {
-						type: "plain_text",
-						text: ":x: Cancel",
-						emoji: true
-					},
-					value: "cancel",
-					action_id: "cancel"
-				}
-			]
-		}
+			elements: row.map(project => ({
+				type: "button",
+				text: {
+					type: "plain_text",
+					text: ":" + project[1][2] + ": " + project[1][0],
+					emoji: true
+				},
+				value: project[0] || "cancel",
+				action_id: project[0] ? "learn-about-" + project[0] : "cancel"
+			}))
+		})))
 	]
 })];
 app.command("/gportfolio-grid", commands.grid);
@@ -128,48 +138,29 @@ app.action(/^learn-about-.+$/, async ({ ack, action: { value }, body: { user: { 
 					text: "Commands:"
 				}
 			},
-			...(project[4].map(command => [
-				{
-					type: "section",
-					text: {
-						type: "mrkdwn",
-						text: "*/" + project[3] + command[0] + "*: " + command[1][0] + "\n" + command[1][1]
-					}
-				},
-				{
-					type: "actions",
-					elements: [
-						{
-							type: "button",
-							text: {
-								type: "plain_text",
-								text: "Run Command",
-								emoji: true
-							},
-							value: project[3] + "+" + command[0],
-							action_id: "run-command-" + project[3] + command[0]
-						}
-					]
-				}
-			]).flat()),
+			...(gridify(project[4], [, ["", , "transparent"]], false, true).map(row => ({
+				type: "section",
+				fields: row.map(command => ({
+					type: "mrkdwn",
+					text: command[0] ? "*/" + project[3] + command[0] + "*: " + command[1][0] + "\n" + command[1][1] : " "
+				}))
+			}))),
 			{
 				type: "divider"
 			},
-			{
+			...(gridify(project[4], [, ["Cancel", , "x"]], true).map(row => ({
 				type: "actions",
-				elements: [
-					{
-						type: "button",
-						text: {
-							type: "plain_text",
-							text: ":x: Cancel",
-							emoji: true
-						},
-						value: "cancel",
-						action_id: "cancel"
-					}
-				]
-			}
+				elements: row.map(command => ({
+					type: "button",
+					text: {
+						type: "plain_text",
+						text: command[0] ? "/" + project[3] + command[0] : ":x: Cancel",
+						emoji: true,
+					},
+					value: command[0] ? project[3] + "+" + command[0] : "cancel",
+					action_id: command[0] ? "run-command-" + project[3] + command[0] : "cancel"
+				}))
+			})))
 		]
 	});
 });
@@ -196,7 +187,7 @@ app.action(/^run-command-.+$/, async ({ ack, action: { value }, body: { user: { 
 			app.client.chat.postEphemeral(response);
 		}
 	});
-	else await app.client.chat.postMessage({
+	await app.client.chat.postMessage({
 		channel: project[1],
 		text: value.split("+")[1] + ";" + user + ";" + channel
 	});
