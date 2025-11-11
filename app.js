@@ -230,7 +230,7 @@ app.action(/^about-command-.+$/, async ({ ack, action: { value }, body: { user: 
 app.view(/^run-command-.+$/, async ({ ack, view: { title: { text } }, body: { user: { id: user }, view: { blocks: { 0: { text: { text: commMeta } }, 2: { text: { text: meta } } } } }, respond }) => {
 	await ack();
 	const channel = meta.split("<#")[1].split(">")[0];
-	const projectId = projects.find(proj => proj[1][3] === commMeta.split("/")[1].split(text)[0])[1][1];
+	const projectId = projects.find(proj => commMeta.split(":")[0].startsWith("*/" + proj[1][3]))[1][1];
 	console.log(projectId, text + ";" + user + ";" + channel);
 	if (projectId === gPortfolioBotId) return commands[text]({
 		ack: _ => _,
